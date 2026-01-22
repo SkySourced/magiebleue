@@ -1,6 +1,7 @@
 use std::{ffi::CString, fs};
 
 use gl::types::{self, GLenum, GLuint};
+use ultraviolet::Mat4;
 
 use crate::functions::get_error;
 
@@ -76,6 +77,32 @@ impl ShaderProgram {
         loc
     }
 
+    /// Sets MVP matrices in shader uniforms. Uses uniform names `model`, `view`, and `proj`.
+    pub fn set_matrix_uniforms(&self, model: &Mat4, view: &Mat4, proj: &Mat4) {
+        unsafe {
+            gl::UniformMatrix4fv(
+                self.get_uniform_location("model"),
+                1,
+                gl::FALSE,
+                model.as_array().as_ptr(),
+            );
+
+            gl::UniformMatrix4fv(
+                self.get_uniform_location("view"),
+                1,
+                gl::FALSE,
+                view.as_array().as_ptr(),
+            );
+
+            gl::UniformMatrix4fv(
+                self.get_uniform_location("proj"),
+                1,
+                gl::FALSE,
+                proj.as_array().as_ptr(),
+            );
+        }
+    }
+
     /// Compiles a complete shader program from a vsh source and a fsh source.
     pub fn from_vert_frag(vert: &str, frag: &str) -> Result<Self, String> {
         let prog = Self::new().ok_or_else(|| "Couldn't allocate a shader program".to_string())?;
@@ -97,6 +124,31 @@ impl ShaderProgram {
         }
     }
 
+    /// Compiles a complete shader program from a vsh source, a gsh source and a fsh source.
+    pub fn from_vert_geom_frag(vert: &str, geom: &str, frag: &str) -> Result<Self, String> {
+        let prog = Self::new().ok_or_else(|| "Couldn't allocate a shader program".to_string())?;
+        let vsh = Shader::from_source(ShaderType::Vertex, vert)
+            .map_err(|e| format!("Vertex compile error: {}", e))?;
+        let fsh = Shader::from_source(ShaderType::Fragment, frag)
+            .map_err(|e| format!("Fragment compile error: {}", e))?;
+        let gsh = Shader::from_source(ShaderType::Geometry, geom)
+            .map_err(|e| format!("Geometry compile error: {}", e))?;
+        prog.attach_shader(&vsh);
+        prog.attach_shader(&fsh);
+        prog.attach_shader(&gsh);
+        prog.link_program();
+        vsh.delete();
+        fsh.delete();
+        gsh.delete();
+        if prog.link_success() {
+            Ok(prog)
+        } else {
+            let out = format!("Linking error: {}", prog.info_log());
+            prog.delete();
+            Err(out)
+        }
+    }
+
     /// Compiles a complete shader program from a vsh filepath and fsh filepath
     pub fn from_vert_frag_file(vert: &str, frag: &str) -> Result<Self, String> {
         ShaderProgram::from_vert_frag(
@@ -108,11 +160,27 @@ impl ShaderProgram {
                 .as_str(),
         )
     }
+
+    /// Compiles a complete shader program from a vsh filepath, a gsh filepath and fsh filepath
+    pub fn from_vert_geom_frag_file(vert: &str, geom: &str, frag: &str) -> Result<Self, String> {
+        ShaderProgram::from_vert_geom_frag(
+            fs::read_to_string(vert)
+                .map_err(|e| format!("Vertex read error: {}", e))?
+                .as_str(),
+            fs::read_to_string(geom)
+                .map_err(|e| format!("Geometry read error: {}", e))?
+                .as_str(),
+            fs::read_to_string(frag)
+                .map_err(|e| format!("Fragment read error: {}", e))?
+                .as_str(),
+        )
+    }
 }
 
 pub enum ShaderType {
     Vertex = gl::VERTEX_SHADER as _,
     Fragment = gl::FRAGMENT_SHADER as _,
+    Geometry = gl::GEOMETRY_SHADER as _,
 }
 
 pub struct Shader(pub GLuint);

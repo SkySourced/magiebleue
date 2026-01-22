@@ -4,13 +4,17 @@ layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec2 aTexCoords;
 layout(location = 2) in vec3 aNormal;
 
-out vec2 vTexCoords;
+out VS_OUT {
+    vec2 texCoords;
+    vec3 normal;
+} vs_out;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
 
 void main() {
-    vTexCoords = aTexCoords;
+    vs_out.texCoords = aTexCoords;
+    vs_out.normal = aNormal;
     gl_Position = proj * view * model * vec4(aPos.x, aPos.y, aPos.z, 1.0);
 }
