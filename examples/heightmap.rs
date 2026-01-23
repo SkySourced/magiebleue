@@ -42,11 +42,11 @@ fn main() {
 
     let heightmap_texture;
 
-    let application = Rc::new(RefCell::new(Application::start(WindowContext {
+    let mut application = Application::start(WindowContext {
         size: IVec2::new(1920, 1080),
         window_title: "Magiebleue - Heightmap".to_owned(),
         window_mode: glfw::WindowMode::Windowed,
-    })));
+    });
     heightmap_shader = ShaderProgram::from_filepath(
         "shaders/heightmap.vert",
         Some("shaders/heightmap.tesc"),
@@ -110,109 +110,101 @@ fn main() {
 
     let yaw_cb = Rc::clone(&yaw);
     let pitch_cb = Rc::clone(&pitch);
-    let app_cb = Rc::clone(&application);
 
     camera_pos = Vec3::new(-3.0, 1.0, 5.0);
     camera_up = Vec3::unit_y();
 
     proj = ultraviolet::projection::perspective_infinite_z_gl(PI / 0.6, 1920.0 / 1080.0, 0.01);
+    
+    application.window.set_cursor_pos_callback(move |w, x, y| {
+        let dx: f32 = x as f32 - 1920.0_f32 / 2.0_f32;
+        let dy: f32 = y as f32 - 1080.0_f32 / 2.0_f32;
 
-    {
-        app_cb
-            .borrow_mut()
-            .window
-            .set_cursor_pos_callback(move |w, x, y| {
-                let dx: f32 = x as f32 - 1920.0_f32 / 2.0_f32;
-                let dy: f32 = y as f32 - 1080.0_f32 / 2.0_f32;
+        let mut yaw = yaw_cb.borrow_mut();
+        let mut pitch = pitch_cb.borrow_mut();
 
-                let mut yaw = yaw_cb.borrow_mut();
-                let mut pitch = pitch_cb.borrow_mut();
+        *yaw += dx * MOUSE_SENS;
+        *pitch -= dy * MOUSE_SENS;
+        *yaw %= 2.0 * PI;
+        *pitch = pitch.clamp(-PI / 2.1, PI / 2.1);
 
-                *yaw += dx * MOUSE_SENS;
-                *pitch -= dy * MOUSE_SENS;
-                *yaw %= 2.0 * PI;
-                *pitch = pitch.clamp(-PI / 2.1, PI / 2.1);
+        println!("{} yaw, {} pitch", *yaw / PI * 180.0, *pitch / PI * 180.0);
 
-                println!("{} yaw, {} pitch", *yaw / PI * 180.0, *pitch / PI * 180.0);
+        w.set_cursor_pos(1920.0 / 2.0, 1080.0 / 2.0);
+    });
+    
+    while !application.window.should_close() {
+        application.update(|window, keys_pressed, time| {
+            let delta_time = time - last_time;
+            last_time = time;
 
-                w.set_cursor_pos(1920.0 / 2.0, 1080.0 / 2.0);
-            });
-    }
-    while !application.borrow().window.should_close() {
-        application
-            .borrow_mut()
-            .update(|window, keys_pressed, time| {
-                let delta_time = time - last_time;
-                last_time = time;
+            let (yaw_val, pitch_val) = {
+                let yaw = *yaw.borrow();
+                let pitch = *pitch.borrow();
+                (yaw, pitch)
+            };
 
-                let (yaw_val, pitch_val) = {
-                    let yaw = *yaw.borrow();
-                    let pitch = *pitch.borrow();
-                    (yaw, pitch)
-                };
+            camera_front = Vec3::new(
+                yaw_val.cos() * pitch_val.cos(),
+                pitch_val.sin(),
+                yaw_val.sin() * pitch_val.cos(),
+            );
+            camera_front.normalize();
 
-                camera_front = Vec3::new(
-                    yaw_val.cos() * pitch_val.cos(),
-                    pitch_val.sin(),
-                    yaw_val.sin() * pitch_val.cos(),
-                );
-                camera_front.normalize();
+            camera_right = camera_front.cross(camera_up).normalized();
 
-                camera_right = camera_front.cross(camera_up).normalized();
+            model = ultraviolet::Mat4::identity();
 
-                model = ultraviolet::Mat4::identity();
+            view = ultraviolet::Mat4::look_at(camera_pos, camera_pos + camera_front, -camera_up);
 
-                view =
-                    ultraviolet::Mat4::look_at(camera_pos, camera_pos + camera_front, -camera_up);
+            unsafe {
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-                unsafe {
-                    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+                base_shader.use_program();
+                base_shader.set_matrix_uniforms(&model, &view, &proj);
 
-                    base_shader.use_program();
-                    base_shader.set_matrix_uniforms(&model, &view, &proj);
+                plane_vao.draw(Primitive::TriangleFan);
 
-                    plane_vao.draw(Primitive::TriangleFan);
+                textures::set_texture_slot(0);
+                heightmap_texture.bind(TextureType::Tex2d);
 
-                    textures::set_texture_slot(0);
-                    heightmap_texture.bind(TextureType::Tex2d);
+                heightmap_shader.use_program();
+                heightmap_shader.set_matrix_uniforms(&model, &view, &proj);
 
-                    heightmap_shader.use_program();
-                    heightmap_shader.set_matrix_uniforms(&model, &view, &proj);
+                heightmap_vao.draw(Primitive::Patches);
+                get_error(Some("end of render"));
+            }
 
-                    heightmap_vao.draw(Primitive::Patches);
-                    get_error(Some("end of render"));
-                }
-
-                for item in keys_pressed.iter() {
-                    match *item {
-                        Key::W => {
-                            camera_pos += camera_front * delta_time as f32 * SPEED;
-                            if keys_pressed.contains(&Key::LeftShift)
-                                || keys_pressed.contains(&Key::RightShift)
-                            {
-                                camera_pos.y -= (camera_front * delta_time as f32 * SPEED).y;
-                            }
+            for item in keys_pressed.iter() {
+                match *item {
+                    Key::W => {
+                        camera_pos += camera_front * delta_time as f32 * SPEED;
+                        if keys_pressed.contains(&Key::LeftShift)
+                            || keys_pressed.contains(&Key::RightShift)
+                        {
+                            camera_pos.y -= (camera_front * delta_time as f32 * SPEED).y;
                         }
-                        Key::S => {
-                            camera_pos -= camera_front * delta_time as f32 * SPEED;
-                            if keys_pressed.contains(&Key::LeftShift)
-                                || keys_pressed.contains(&Key::RightShift)
-                            {
-                                camera_pos.y += (camera_front * delta_time as f32 * SPEED).y;
-                            }
-                        }
-                        Key::A => {
-                            camera_pos -= camera_right * delta_time as f32 * SPEED;
-                        }
-                        Key::D => {
-                            camera_pos += camera_right * delta_time as f32 * SPEED;
-                        }
-                        Key::Escape => {
-                            window.set_should_close(true);
-                        }
-                        _ => {}
                     }
+                    Key::S => {
+                        camera_pos -= camera_front * delta_time as f32 * SPEED;
+                        if keys_pressed.contains(&Key::LeftShift)
+                            || keys_pressed.contains(&Key::RightShift)
+                        {
+                            camera_pos.y += (camera_front * delta_time as f32 * SPEED).y;
+                        }
+                    }
+                    Key::A => {
+                        camera_pos -= camera_right * delta_time as f32 * SPEED;
+                    }
+                    Key::D => {
+                        camera_pos += camera_right * delta_time as f32 * SPEED;
+                    }
+                    Key::Escape => {
+                        window.set_should_close(true);
+                    }
+                    _ => {}
                 }
-            });
+            }
+        });
     }
 }

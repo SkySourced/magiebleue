@@ -55,6 +55,7 @@ impl Application {
         }
     }
 
+    /// Runs the `loop` closure then swaps GL buffers and updates `Application::keysPressed`
     pub fn update<C>(&mut self, mut r#loop: C)
     where
         C: FnMut(&mut glfw::PWindow, &HashSet<glfw::Key>, f64),
