@@ -1,7 +1,7 @@
 use gl::types::GLuint;
-use noise::{
-    core::open_simplex::open_simplex_2d, permutationtable::PermutationTable, utils::PlaneMapBuilder,
-};
+use noise::
+    utils::NoiseMap
+;
 use ultraviolet::Vec4;
 
 use crate::functions::get_error;
@@ -66,15 +66,8 @@ impl Texture {
         unsafe { gl::TexParameterfv(ty as _, gl::TEXTURE_BORDER_COLOR, col.as_array().as_ptr()) }
     }
 
-    /// Fills the active Tex2d with OpenSimplex noise
-    pub fn fill_noise(size: usize, noise_gen: &PermutationTable) {
-        let mut map =
-            PlaneMapBuilder::<_, 2>::new_fn(|point| open_simplex_2d(point.into(), noise_gen))
-                .set_size(size, size)
-                .set_x_bounds(0.0, 10.0)
-                .set_y_bounds(0.0, 10.0)
-                .build();
-
+    /// Fills the active Tex2d with noise
+    pub fn fill_noise(size: usize, mut map: NoiseMap) {
         let mut minv = f64::MAX;
         let mut maxv = f64::MIN;
 

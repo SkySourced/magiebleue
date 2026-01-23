@@ -14,8 +14,16 @@ use magiebleue::{
     textures::{self, TexScaleOp, TexWrapBehaviour, Texture, TextureType},
     wavefront_parser::Vertex,
 };
-use noise::permutationtable::PermutationTable;
+use noise::{core::open_simplex::open_simplex_2d, permutationtable::PermutationTable, utils::PlaneMapBuilder};
 use ultraviolet::{IVec2, Vec3, Vec4};
+
+///
+/// Heightmap example
+/// Tests base features of the engine.
+/// Vertex, tessellation control & evaluation, and fragment shaders
+/// Mouse & keyboard input
+/// Basic noise generation
+/// 
 
 fn main() {
     const SPEED: f32 = 20.0;
@@ -102,7 +110,15 @@ fn main() {
 
     heightmap_texture = Texture::new().expect("texture should create");
     heightmap_texture.bind(TextureType::Tex2d);
-    Texture::fill_noise(128, &permtable);
+    
+    let map =
+        PlaneMapBuilder::<_, 2>::new_fn(|point| open_simplex_2d(point.into(), &permtable))
+            .set_size(128, 128)
+            .set_x_bounds(0.0, 5.0)
+            .set_y_bounds(0.0, 5.0)
+            .build();
+    
+    Texture::fill_noise(128, map);
     Texture::gen_mipmap(TextureType::Tex2d);
     Texture::set_dual_wrap_behaviour(TextureType::Tex2d, TexWrapBehaviour::ClampToBorder);
     Texture::set_border_colour(TextureType::Tex2d, Vec4::zero());

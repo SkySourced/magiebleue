@@ -26,7 +26,7 @@ pub fn set_polygon_mode(mode: PolygonMode) {
     }
 }
 
-/// Prints errors until there is no more
+/// Prints errors until there is no more. An optional context can be attached to the call to distinguish multiple calls
 pub fn get_error(context: Option<&'static str>) {
     let mut error_code;
     loop {
