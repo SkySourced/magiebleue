@@ -5,12 +5,11 @@ use ultraviolet::{Vec2, Vec3};
 pub type Vertex = [f32; 8];
 pub type TriIndex = [usize; 3];
 
-pub fn parse_wavefront(path: &str) -> Result<(Option<Vec<Vertex>>, Option<Vec<TriIndex>>), String> {
+pub fn parse_wavefront(path: &str) -> Result<Option<Vec<Vertex>>, String> {
     let mut vertex_points = Vec::<Vec3>::new();
     let mut vertex_texcoords = Vec::<Vec2>::new();
     let mut vertex_normals = Vec::<Vec3>::new();
     let mut raw_vertices = Vec::<Vertex>::new();
-    let raw_indices = Vec::<TriIndex>::new();
 
     let obj_file = fs::read_to_string(path).map_err(|e| format!("Model read error: {}", e))?;
 
@@ -47,11 +46,12 @@ pub fn parse_wavefront(path: &str) -> Result<(Option<Vec<Vertex>>, Option<Vec<Tr
                 for vert in face_vertices {
                     let vert_param_indices = vert.split("/");
                     let mut vertex: Vertex = Vertex::default();
-                    
+
                     let position = *vertex_points
                         .get(
                             vert_param_indices
-                                .clone().next()
+                                .clone()
+                                .next()
                                 .expect("face should provide at least position index")
                                 .parse::<usize>()
                                 .expect("position index should be a parseable usize")
@@ -98,16 +98,10 @@ pub fn parse_wavefront(path: &str) -> Result<(Option<Vec<Vertex>>, Option<Vec<Tr
         }
     }
 
-    let vertices = match raw_vertices.len() {
+    Ok(match raw_vertices.len() {
         0 => None,
         _ => Some(raw_vertices),
-    };
-    let indices = match raw_indices.len() {
-        0 => None,
-        _ => Some(raw_indices),
-    };
-
-    Ok((vertices, indices))
+    })
 }
 
 /// Reads a float from a char iterator then consumes the subsequent space.

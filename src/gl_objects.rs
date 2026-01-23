@@ -46,7 +46,7 @@ impl VertexArray {
                 gl::FLOAT,
                 gl::FALSE,
                 size_of::<Vertex>().try_into().unwrap(),
-                0 as *const _,
+                std::ptr::null(),
             );
             gl::EnableVertexAttribArray(0);
             gl::VertexAttribPointer(

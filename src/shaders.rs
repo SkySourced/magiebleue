@@ -160,15 +160,16 @@ impl ShaderProgram {
         prog.link_program();
         vsh.delete();
         fsh.delete();
-        if tesc_sh.is_some() {
-            tesc_sh.expect("tesc should exist").delete();
+        if let Some(tesc) = tesc_sh {
+            tesc.delete();
         }
-        if tese_sh.is_some() {
-            tese_sh.expect("tese should exist").delete();
+        if let Some(tese) = tese_sh {
+            tese.delete();
         }
-        if geom_sh.is_some() {
-            geom_sh.expect("geom should exist").delete();
+        if let Some(geom) = geom_sh {
+            geom.delete();
         }
+
         if prog.link_success() {
             Ok(prog)
         } else {
@@ -209,11 +210,15 @@ impl ShaderProgram {
         };
 
         ShaderProgram::from_string(
-            fs::read_to_string(vert).map_err(|e| format!("Vertex compile error: {}", e))?.as_str(),
+            fs::read_to_string(vert)
+                .map_err(|e| format!("Vertex compile error: {}", e))?
+                .as_str(),
             tesc_src?.as_deref(),
             tese_src?.as_deref(),
             geom_src?.as_deref(),
-            fs::read_to_string(frag).map_err(|e| format!("Fragment compile error: {}", e))?.as_str(),
+            fs::read_to_string(frag)
+                .map_err(|e| format!("Fragment compile error: {}", e))?
+                .as_str(),
         )
     }
 }

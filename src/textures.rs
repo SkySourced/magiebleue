@@ -108,6 +108,13 @@ impl Texture {
     }
 }
 
+/// Sets the currently active texture unit.
+pub fn set_texture_slot(slot: u32) {
+    unsafe {
+        gl::ActiveTexture(gl::TEXTURE0 + slot);
+    }
+}
+
 /// Represents the types of textures
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextureType {
