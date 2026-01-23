@@ -103,18 +103,72 @@ impl ShaderProgram {
         }
     }
 
-    /// Compiles a complete shader program from a vsh source and a fsh source.
-    pub fn from_vert_frag(vert: &str, frag: &str) -> Result<Self, String> {
+    /// Compiles a complete shader program from mandatory vertex & fragment and optional tessellation control/evaluation & geometry shader sources.
+    pub fn from_string(
+        vert: &str,
+        tesc: Option<&str>,
+        tese: Option<&str>,
+        geom: Option<&str>,
+        frag: &str,
+    ) -> Result<Self, String> {
         let prog = Self::new().ok_or_else(|| "Couldn't allocate a shader program".to_string())?;
         let vsh = Shader::from_source(ShaderType::Vertex, vert)
             .map_err(|e| format!("Vertex compile error: {}", e))?;
         let fsh = Shader::from_source(ShaderType::Fragment, frag)
             .map_err(|e| format!("Fragment compile error: {}", e))?;
+        let tesc_sh: Option<Shader>;
+        if tesc.is_some() {
+            tesc_sh = Some(
+                Shader::from_source(
+                    ShaderType::TessellationControl,
+                    tesc.expect("tesc source should exist"),
+                )
+                .map_err(|e| format!("Tessellation control compile error: {}", e))?,
+            );
+            prog.attach_shader(tesc_sh.as_ref().expect("tesc shader should exist"));
+        } else {
+            tesc_sh = None;
+        }
+        let tese_sh: Option<Shader>;
+        if tese.is_some() {
+            tese_sh = Some(
+                Shader::from_source(
+                    ShaderType::TessellationEvaluation,
+                    tese.expect("tese source should exist"),
+                )
+                .map_err(|e| format!("Tessellation evaluation compile error: {}", e))?,
+            );
+            prog.attach_shader(tese_sh.as_ref().expect("tese shader should exist"));
+        } else {
+            tese_sh = None;
+        }
+        let geom_sh: Option<Shader>;
+        if geom.is_some() {
+            geom_sh = Some(
+                Shader::from_source(
+                    ShaderType::TessellationControl,
+                    geom.expect("geom source should exist"),
+                )
+                .map_err(|e| format!("Geometry compile error: {}", e))?,
+            );
+            prog.attach_shader(geom_sh.as_ref().expect("geom shader should exist"));
+        } else {
+            geom_sh = None;
+        }
         prog.attach_shader(&vsh);
         prog.attach_shader(&fsh);
         prog.link_program();
         vsh.delete();
         fsh.delete();
+        if tesc_sh.is_some() {
+            tesc_sh.expect("tesc should exist").delete();
+        }
+        if tese_sh.is_some() {
+            tese_sh.expect("tese should exist").delete();
+        }
+        if geom_sh.is_some() {
+            geom_sh.expect("geom should exist").delete();
+        }
         if prog.link_success() {
             Ok(prog)
         } else {
@@ -124,55 +178,42 @@ impl ShaderProgram {
         }
     }
 
-    /// Compiles a complete shader program from a vsh source, a gsh source and a fsh source.
-    pub fn from_vert_geom_frag(vert: &str, geom: &str, frag: &str) -> Result<Self, String> {
-        let prog = Self::new().ok_or_else(|| "Couldn't allocate a shader program".to_string())?;
-        let vsh = Shader::from_source(ShaderType::Vertex, vert)
-            .map_err(|e| format!("Vertex compile error: {}", e))?;
-        let fsh = Shader::from_source(ShaderType::Fragment, frag)
-            .map_err(|e| format!("Fragment compile error: {}", e))?;
-        let gsh = Shader::from_source(ShaderType::Geometry, geom)
-            .map_err(|e| format!("Geometry compile error: {}", e))?;
-        prog.attach_shader(&vsh);
-        prog.attach_shader(&fsh);
-        prog.attach_shader(&gsh);
-        prog.link_program();
-        vsh.delete();
-        fsh.delete();
-        gsh.delete();
-        if prog.link_success() {
-            Ok(prog)
+    /// Compiles a complete shader program from a mandatory vertex & fragment and optional tessellation control/evaluation & geometry shader filepaths.
+    pub fn from_filepath(
+        vert: &str,
+        tesc: Option<&str>,
+        tese: Option<&str>,
+        geom: Option<&str>,
+        frag: &str,
+    ) -> Result<Self, String> {
+        let tesc_src: Result<Option<String>, String> = if let Some(tesc) = tesc {
+            Ok(Some(fs::read_to_string(tesc).map_err(|e| {
+                format!("Tessellation control compile error: {}", e)
+            })?))
         } else {
-            let out = format!("Linking error: {}", prog.info_log());
-            prog.delete();
-            Err(out)
-        }
-    }
+            Ok(None)
+        };
+        let tese_src: Result<Option<String>, String> = if let Some(tese) = tese {
+            Ok(Some(fs::read_to_string(tese).map_err(|e| {
+                format!("Tessellation evaluation compile error: {}", e)
+            })?))
+        } else {
+            Ok(None)
+        };
+        let geom_src: Result<Option<String>, String> = if let Some(geom) = geom {
+            Ok(Some(
+                fs::read_to_string(geom).map_err(|e| format!("Geometry compile error: {}", e))?,
+            ))
+        } else {
+            Ok(None)
+        };
 
-    /// Compiles a complete shader program from a vsh filepath and fsh filepath
-    pub fn from_vert_frag_file(vert: &str, frag: &str) -> Result<Self, String> {
-        ShaderProgram::from_vert_frag(
-            fs::read_to_string(vert)
-                .map_err(|e| format!("Vertex read error: {}", e))?
-                .as_str(),
-            fs::read_to_string(frag)
-                .map_err(|e| format!("Fragment read error: {}", e))?
-                .as_str(),
-        )
-    }
-
-    /// Compiles a complete shader program from a vsh filepath, a gsh filepath and fsh filepath
-    pub fn from_vert_geom_frag_file(vert: &str, geom: &str, frag: &str) -> Result<Self, String> {
-        ShaderProgram::from_vert_geom_frag(
-            fs::read_to_string(vert)
-                .map_err(|e| format!("Vertex read error: {}", e))?
-                .as_str(),
-            fs::read_to_string(geom)
-                .map_err(|e| format!("Geometry read error: {}", e))?
-                .as_str(),
-            fs::read_to_string(frag)
-                .map_err(|e| format!("Fragment read error: {}", e))?
-                .as_str(),
+        ShaderProgram::from_string(
+            fs::read_to_string(vert).map_err(|e| format!("Vertex compile error: {}", e))?.as_str(),
+            tesc_src?.as_deref(),
+            tese_src?.as_deref(),
+            geom_src?.as_deref(),
+            fs::read_to_string(frag).map_err(|e| format!("Fragment compile error: {}", e))?.as_str(),
         )
     }
 }
@@ -181,6 +222,8 @@ pub enum ShaderType {
     Vertex = gl::VERTEX_SHADER as _,
     Fragment = gl::FRAGMENT_SHADER as _,
     Geometry = gl::GEOMETRY_SHADER as _,
+    TessellationControl = gl::TESS_CONTROL_SHADER as _,
+    TessellationEvaluation = gl::TESS_EVALUATION_SHADER as _,
 }
 
 pub struct Shader(pub GLuint);

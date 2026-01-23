@@ -1,3 +1,5 @@
+use std::f32;
+
 use crate::wavefront_parser::Vertex;
 
 /// Wrapper for a [VAO](https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_Array_Object)
@@ -30,7 +32,7 @@ impl VertexArray {
         self.1.expect("VBO should create").bind(BufferType::Array);
 
         self.2 = Some(vertices);
-        
+
         buffer_data(
             BufferType::Array,
             bytemuck::cast_slice(self.2.as_ref().expect("vertex vector should exist")),
@@ -97,6 +99,8 @@ pub enum Primitive {
     Triangles = gl::TRIANGLES as isize,
     TriangleStrip = gl::TRIANGLE_STRIP as isize,
     TriangleFan = gl::TRIANGLE_FAN as isize,
+    /// Used for tessellation shaders
+    Patches = gl::PATCHES as isize,
 }
 
 /// Possible types of buffer

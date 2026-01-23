@@ -19,8 +19,8 @@ use glfw::{Action, Context, CursorMode, Key};
 use noise::permutationtable::PermutationTable;
 use ultraviolet::{Vec3, Vec4};
 
-use crate::functions::get_error;
-use crate::gl_objects::Primitive;
+use crate::functions::{gen_patches, get_error, set_polygon_mode};
+use crate::gl_objects::{Primitive};
 use crate::{
     functions::set_clear_color,
     gl_objects::VertexArray,
@@ -45,62 +45,31 @@ fn main() {
 
     gl::load_with(|s| window.get_proc_address(s).unwrap() as *const _);
 
-    let shader_program_geom = ShaderProgram::from_vert_geom_frag_file(
+    let shader_program_geom = ShaderProgram::from_filepath(
         "shaders/heightmap.vert",
-        "shaders/heightmap.geom",
+        Some("shaders/heightmap.tesc"),
+        Some("shaders/heightmap.tese"),
+        None,
         "shaders/heightmap.frag",
     )
     .unwrap();
 
     let shader_program =
-        ShaderProgram::from_vert_frag_file("shaders/base.vert", "shaders/base.frag").unwrap();
+        ShaderProgram::from_filepath("shaders/base.vert", None, None, None, "shaders/base.frag")
+            .unwrap();
 
     set_clear_color(Vec4::new(0.2, 0.3, 0.3, 1.0));
 
-    let vertices: Option<Vec<Vertex>> = Some(
-        [
-            [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 0.0, 0.25, 0.0, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 0.0, 0.25, 0.0, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 0.0, 0.75, 0.0, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 0.0, 0.75, 0.0, 0.0, 1.0, 0.0],
-            [8.0, 2.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
-            [0.0, 2.0, 2.0, 0.0, 0.25, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 2.0, 0.25, 0.25, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 2.0, 0.25, 0.25, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 2.0, 0.5, 0.25, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 2.0, 0.5, 0.25, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 2.0, 0.75, 0.25, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 2.0, 0.75, 0.25, 0.0, 1.0, 0.0],
-            [8.0, 2.0, 2.0, 1.0, 0.25, 0.0, 1.0, 0.0],
-            [0.0, 2.0, 4.0, 0.0, 0.5, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 4.0, 0.25, 0.5, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 4.0, 0.25, 0.5, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 4.0, 0.5, 0.5, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 4.0, 0.5, 0.5, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 4.0, 0.75, 0.5, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 4.0, 0.75, 0.5, 0.0, 1.0, 0.0],
-            [8.0, 2.0, 4.0, 1.0, 0.5, 0.0, 1.0, 0.0],
-            [0.0, 2.0, 6.0, 0.0, 0.75, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 6.0, 0.25, 0.75, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 6.0, 0.25, 0.75, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 6.0, 0.5, 0.75, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 6.0, 0.5, 0.75, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 6.0, 0.75, 0.75, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 6.0, 0.75, 0.75, 0.0, 1.0, 0.0],
-            [8.0, 2.0, 6.0, 1.0, 0.75, 0.0, 1.0, 0.0],
-            [0.0, 2.0, 8.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 8.0, 0.25, 1.0, 0.0, 1.0, 0.0],
-            [2.0, 2.0, 8.0, 0.25, 1.0, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 8.0, 0.5, 1.0, 0.0, 1.0, 0.0],
-            [4.0, 2.0, 8.0, 0.5, 1.0, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 8.0, 0.75, 1.0, 0.0, 1.0, 0.0],
-            [6.0, 2.0, 8.0, 0.75, 1.0, 0.0, 1.0, 0.0],
-            [8.0, 2.0, 8.0, 1.0, 1.0, 0.0, 1.0, 0.0],
-        ]
-        .to_vec(),
+    let mut vertices: Option<Vec<Vertex>> = Some(Vec::new());
+    gen_patches(
+        vertices.as_mut().unwrap(),
+        64,
+        256.0,
+        Vec3 {
+            x: -128.0,
+            y: 0.0,
+            z: -128.0,
+        },
     );
 
     let plane_data: [Vertex; 4] = [
@@ -115,8 +84,9 @@ fn main() {
 
     let mut plane_vao = VertexArray::new().expect("VAO should create");
     plane_vao.attach_vertex(plane_data.to_vec());
-
+    
     unsafe {
+        gl::PatchParameteri(gl::PATCH_VERTICES, 4);
         gl::Enable(gl::DEPTH_TEST);
     }
 
@@ -130,7 +100,7 @@ fn main() {
 
     let tex = Texture::new().expect("texture should create");
     tex.bind(TextureType::Tex2d);
-    Texture::fill_noise(32, &permtable);
+    Texture::fill_noise(128, &permtable);
     Texture::gen_mipmap(TextureType::Tex2d);
     Texture::set_dual_wrap_behaviour(TextureType::Tex2d, TexWrapBehaviour::ClampToBorder);
     Texture::set_border_colour(TextureType::Tex2d, Vec4::zero());
@@ -210,7 +180,7 @@ fn main() {
             shader_program_geom.use_program();
             shader_program_geom.set_matrix_uniforms(&model, &view, &proj);
 
-            heightmap_vao.draw(Primitive::Lines);
+            heightmap_vao.draw(Primitive::Patches);
             get_error(None);
         }
 

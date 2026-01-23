@@ -71,6 +71,8 @@ impl Texture {
         let mut map =
             PlaneMapBuilder::<_, 2>::new_fn(|point| open_simplex_2d(point.into(), noise_gen))
                 .set_size(size, size)
+                .set_x_bounds(0.0, 10.0)
+                .set_y_bounds(0.0, 10.0)
                 .build();
 
         let mut minv = f64::MAX;

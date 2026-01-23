@@ -1,4 +1,6 @@
-use ultraviolet::Vec4;
+use ultraviolet::{Vec3, Vec4};
+
+use crate::wavefront_parser::Vertex;
 
 pub fn set_clear_color(col: Vec4) {
     unsafe {
@@ -40,6 +42,56 @@ pub fn get_error(context: Option<&'static str>) {
             )
         } else {
             println!("GL error: no context: {}", error_code);
+        }
+    }
+}
+
+/// Generate xz-plane data for tessellation patches
+/// Starting from the minimum corner `pos` and spanning `size` along each dimension with `resolution` patches between
+pub fn gen_patches(vertices: &mut Vec<Vertex>, resolution: u32, size: f32, pos: Vec3) {
+    let unit_size = size / resolution as f32;
+    for i in 0..resolution {
+        for j in 0..resolution {
+            vertices.push([
+                pos.x + i as f32 * unit_size,
+                pos.y,
+                pos.z + j as f32 * unit_size,
+                i as f32 / resolution as f32,
+                j as f32 / resolution as f32,
+                0.0,
+                1.0,
+                0.0,
+            ]);
+            vertices.push([
+                pos.x + (i + 1) as f32 * unit_size,
+                pos.y,
+                pos.z + j as f32 * unit_size,
+                (i + 1) as f32 / resolution as f32,
+                j as f32 / resolution as f32,
+                0.0,
+                1.0,
+                0.0,
+            ]);
+            vertices.push([
+                pos.x + i as f32 * unit_size,
+                pos.y,
+                pos.z + (j + 1) as f32 * unit_size,
+                i as f32 / resolution as f32,
+                (j + 1) as f32 / resolution as f32,
+                0.0,
+                1.0,
+                0.0,
+            ]);
+            vertices.push([
+                pos.x + (i + 1) as f32 * unit_size,
+                pos.y,
+                pos.z + (j + 1) as f32 * unit_size,
+                (i + 1) as f32 / resolution as f32,
+                (j + 1) as f32 / resolution as f32,
+                0.0,
+                1.0,
+                0.0,
+            ]);
         }
     }
 }
