@@ -1,29 +1,33 @@
 use gl::types::GLuint;
-use noise::
-    utils::NoiseMap
-;
+use noise::utils::NoiseMap;
 use ultraviolet::Vec4;
 
 use crate::functions::get_error;
 
 /// Holds a texture object
-pub struct Texture(pub GLuint);
+pub struct Texture {
+    pub glid: GLuint,
+}
 impl Texture {
     /// Tries to generate a new texture object
     pub fn new() -> Option<Self> {
         let mut tex = 0;
         unsafe { gl::GenTextures(1, &mut tex) }
-        if tex != 0 { Some(Self(tex)) } else { None }
+        if tex != 0 {
+            Some(Texture { glid: tex })
+        } else {
+            None
+        }
     }
 
     /// Binds this texture to the given target
     pub fn bind(&self, ty: TextureType) {
-        unsafe { gl::BindTexture(ty as _, self.0) }
+        unsafe { gl::BindTexture(ty as _, self.glid) }
     }
 
     /// Deletes this texture
     pub fn delete(self) {
-        unsafe { gl::DeleteTextures(1, self.0 as _) }
+        unsafe { gl::DeleteTextures(1, self.glid as _) }
     }
 
     /// Generate mipmaps
@@ -162,7 +166,7 @@ pub enum TexScaleOp {
     /// linearly interpolates between the two mipmaps that most closely match the size of a pixel and samples the interpolated level via nearest neighbor interpolation.
     /// only available for minification operations.
     NearestMipmapLinear = gl::NEAREST_MIPMAP_LINEAR as isize,
-    /// linearly interpolates between the two closest mipmaps and samples the interpolated level via linear interpolation
+    /// linearly interpolates between the two closest mipmaps and samples the interpolated level via linear interpolation.
     /// only available for minification operations.
     LinearMipmapLinear = gl::LINEAR_MIPMAP_LINEAR as isize,
 }

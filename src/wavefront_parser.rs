@@ -2,14 +2,15 @@ use std::{fs, str::Chars};
 
 use ultraviolet::{Vec2, Vec3};
 
-pub type Vertex = [f32; 8];
+/// vertex with position triple, texcoord tuple, normal triple
+pub type VertexPtn = [f32; 8];
 pub type TriIndex = [usize; 3];
 
-pub fn parse_wavefront(path: &str) -> Result<Option<Vec<Vertex>>, String> {
+pub fn parse_wavefront(path: &str) -> Result<Option<Vec<VertexPtn>>, String> {
     let mut vertex_points = Vec::<Vec3>::new();
     let mut vertex_texcoords = Vec::<Vec2>::new();
     let mut vertex_normals = Vec::<Vec3>::new();
-    let mut raw_vertices = Vec::<Vertex>::new();
+    let mut raw_vertices = Vec::<VertexPtn>::new();
 
     let obj_file = fs::read_to_string(path).map_err(|e| format!("Model read error: {}", e))?;
 
@@ -45,7 +46,7 @@ pub fn parse_wavefront(path: &str) -> Result<Option<Vec<Vertex>>, String> {
                 let face_vertices = chars.as_str().split(" ");
                 for vert in face_vertices {
                     let vert_param_indices = vert.split("/");
-                    let mut vertex: Vertex = Vertex::default();
+                    let mut vertex: VertexPtn = VertexPtn::default();
 
                     let position = *vertex_points
                         .get(

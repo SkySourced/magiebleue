@@ -1,9 +1,13 @@
 use std::f32;
 
-use crate::wavefront_parser::Vertex;
+use crate::wavefront_parser::VertexPtn;
 
 /// Wrapper for a [VAO](https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_Array_Object)
-pub struct VertexArray(pub u32, pub Option<Buffer>, pub Option<Vec<Vertex>>);
+pub struct VertexArray {
+    pub glid: u32,
+    pub buffer: Option<Buffer>,
+    pub vertices: Option<Vec<VertexPtn>>,
+}
 impl VertexArray {
     /// Creates a new VAO
     pub fn new() -> Option<Self> {
@@ -12,7 +16,11 @@ impl VertexArray {
             gl::GenVertexArrays(1, &mut vao);
         }
         if vao != 0 {
-            Some(Self(vao, None, None))
+            Some(VertexArray {
+                glid: vao,
+                buffer: None,
+                vertices: None,
+            })
         } else {
             None
         }
@@ -21,21 +29,23 @@ impl VertexArray {
     /// Binds this VAO as current VAO
     pub fn bind(&self) {
         unsafe {
-            gl::BindVertexArray(self.0);
+            gl::BindVertexArray(self.glid);
         }
     }
 
     /// Attaches vertex data with a standard format (pos-tex-normal)
-    pub fn attach_vertex(&mut self, vertices: Vec<Vertex>) {
+    pub fn attach_vertex(&mut self, vertices: Vec<VertexPtn>) {
         self.bind();
-        self.1 = Buffer::new();
-        self.1.expect("VBO should create").bind(BufferType::Array);
+        self.buffer = Buffer::new();
+        self.buffer
+            .expect("VBO should create")
+            .bind(BufferType::Array);
 
-        self.2 = Some(vertices);
+        self.vertices = Some(vertices);
 
         buffer_data(
             BufferType::Array,
-            bytemuck::cast_slice(self.2.as_ref().expect("vertex vector should exist")),
+            bytemuck::cast_slice(self.vertices.as_ref().expect("vertex vector should exist")),
             gl::STATIC_DRAW,
         );
 
@@ -45,7 +55,7 @@ impl VertexArray {
                 3,
                 gl::FLOAT,
                 gl::FALSE,
-                size_of::<Vertex>().try_into().unwrap(),
+                size_of::<VertexPtn>().try_into().unwrap(),
                 std::ptr::null(),
             );
             gl::EnableVertexAttribArray(0);
@@ -54,7 +64,7 @@ impl VertexArray {
                 2,
                 gl::FLOAT,
                 gl::FALSE,
-                size_of::<Vertex>().try_into().unwrap(),
+                size_of::<VertexPtn>().try_into().unwrap(),
                 (3 * size_of::<f32>()) as *const _,
             );
             gl::EnableVertexAttribArray(1);
@@ -63,7 +73,7 @@ impl VertexArray {
                 3,
                 gl::FLOAT,
                 gl::FALSE,
-                size_of::<Vertex>().try_into().unwrap(),
+                size_of::<VertexPtn>().try_into().unwrap(),
                 (5 * size_of::<f32>()) as *const _,
             );
             gl::EnableVertexAttribArray(2);
@@ -72,12 +82,12 @@ impl VertexArray {
 
     /// Draws from the attached buffer. Binds the VAO and draws the complete buffer once. Does not attach a shader.
     pub fn draw(&self, prim: Primitive) {
-        if self.1.is_none() {
+        if self.buffer.is_none() {
             eprintln!("VertexArray::draw called on VAO without VBO")
         } else {
             self.bind();
             unsafe {
-                gl::DrawArrays(prim as _, 0, self.2.as_ref().unwrap().len() as i32);
+                gl::DrawArrays(prim as _, 0, self.vertices.as_ref().unwrap().len() as i32);
             }
         }
     }
@@ -114,7 +124,9 @@ pub enum BufferType {
 
 /// Wrapper for a (generic buffer)[https://www.khronos.org/opengl/wiki/Buffer_Object]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Buffer(pub u32);
+pub struct Buffer {
+    pub glid: u32,
+}
 impl Buffer {
     /// Makes a new buffer
     pub fn new() -> Option<Self> {
@@ -122,12 +134,16 @@ impl Buffer {
         unsafe {
             gl::GenBuffers(1, &mut vbo);
         }
-        if vbo != 0 { Some(Self(vbo)) } else { None }
+        if vbo != 0 {
+            Some(Buffer { glid: vbo })
+        } else {
+            None
+        }
     }
 
     /// Bind this buffer to given type
     pub fn bind(&self, ty: BufferType) {
-        unsafe { gl::BindBuffer(ty as _, self.0) }
+        unsafe { gl::BindBuffer(ty as _, self.glid) }
     }
 
     /// Clear current buffer binding for given type.

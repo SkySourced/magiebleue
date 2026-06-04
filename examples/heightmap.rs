@@ -12,9 +12,11 @@ use magiebleue::{
     gl_objects::{Primitive, VertexArray},
     shaders::ShaderProgram,
     textures::{self, TexScaleOp, TexWrapBehaviour, Texture, TextureType},
-    wavefront_parser::Vertex,
+    wavefront_parser::VertexPtn,
 };
-use noise::{core::open_simplex::open_simplex_2d, permutationtable::PermutationTable, utils::PlaneMapBuilder};
+use noise::{
+    core::open_simplex::open_simplex_2d, permutationtable::PermutationTable, utils::PlaneMapBuilder,
+};
 use ultraviolet::{IVec2, Vec3, Vec4};
 
 ///
@@ -23,7 +25,7 @@ use ultraviolet::{IVec2, Vec3, Vec4};
 /// Vertex, tessellation control & evaluation, and fragment shaders
 /// Mouse & keyboard input
 /// Basic noise generation
-/// 
+///
 
 fn main() {
     const SPEED: f32 = 20.0;
@@ -70,7 +72,7 @@ fn main() {
 
     set_clear_color(Vec4::new(0.2, 0.3, 0.3, 1.0));
 
-    let mut vertices: Option<Vec<Vertex>> = Some(Vec::new());
+    let mut vertices: Option<Vec<VertexPtn>> = Some(Vec::new());
     gen_patches(
         vertices.as_mut().unwrap(),
         64,
@@ -82,7 +84,7 @@ fn main() {
         },
     );
 
-    let plane_data: [Vertex; 4] = [
+    let plane_data: [VertexPtn; 4] = [
         [-5.0, 0.0, -5.0, 0.0, 0.0, 0.0, 1.0, 0.0],
         [5.0, 0.0, -5.0, 1.0, 0.0, 0.0, 1.0, 0.0],
         [5.0, 0.0, 5.0, 1.0, 1.0, 0.0, 1.0, 0.0],
@@ -110,14 +112,13 @@ fn main() {
 
     heightmap_texture = Texture::new().expect("texture should create");
     heightmap_texture.bind(TextureType::Tex2d);
-    
-    let map =
-        PlaneMapBuilder::<_, 2>::new_fn(|point| open_simplex_2d(point.into(), &permtable))
-            .set_size(128, 128)
-            .set_x_bounds(0.0, 5.0)
-            .set_y_bounds(0.0, 5.0)
-            .build();
-    
+
+    let map = PlaneMapBuilder::<_, 2>::new_fn(|point| open_simplex_2d(point.into(), &permtable))
+        .set_size(128, 128)
+        .set_x_bounds(0.0, 5.0)
+        .set_y_bounds(0.0, 5.0)
+        .build();
+
     Texture::fill_noise(128, map);
     Texture::gen_mipmap(TextureType::Tex2d);
     Texture::set_dual_wrap_behaviour(TextureType::Tex2d, TexWrapBehaviour::ClampToBorder);
@@ -131,7 +132,7 @@ fn main() {
     camera_up = Vec3::unit_y();
 
     proj = ultraviolet::projection::perspective_infinite_z_gl(PI / 0.6, 1920.0 / 1080.0, 0.01);
-    
+
     application.window.set_cursor_pos_callback(move |w, x, y| {
         let dx: f32 = x as f32 - 1920.0_f32 / 2.0_f32;
         let dy: f32 = y as f32 - 1080.0_f32 / 2.0_f32;
@@ -148,7 +149,7 @@ fn main() {
 
         w.set_cursor_pos(1920.0 / 2.0, 1080.0 / 2.0);
     });
-    
+
     while !application.window.should_close() {
         application.update(|window, keys_pressed, time| {
             let delta_time = time - last_time;

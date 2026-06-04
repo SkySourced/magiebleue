@@ -1,6 +1,6 @@
 use ultraviolet::{Vec3, Vec4};
 
-use crate::wavefront_parser::Vertex;
+use crate::wavefront_parser::VertexPtn;
 
 pub fn set_clear_color(col: Vec4) {
     unsafe {
@@ -48,7 +48,7 @@ pub fn get_error(context: Option<&'static str>) {
 
 /// Generate xz-plane data for tessellation patches
 /// Starting from the minimum corner `pos` and spanning `size` along each dimension with `resolution` patches between
-pub fn gen_patches(vertices: &mut Vec<Vertex>, resolution: u32, size: f32, pos: Vec3) {
+pub fn gen_patches(vertices: &mut Vec<VertexPtn>, resolution: u32, size: f32, pos: Vec3) {
     let unit_size = size / resolution as f32;
     for i in 0..resolution {
         for j in 0..resolution {
